@@ -14,6 +14,16 @@ int server_handshake(int *to_client) {
   // creating server's FIFO
   mkfifo("server_fifo", 0644);
   
+  // reading client message
+  open("server_fifo", O_RDONLY, 0644);
+  int cpd;
+  read("server_fifo", &cpd, sizeof(int));
+  
+  // removing server's FIFO
+  remove("server_fifo");
+  
+  // sending acknowledgement to client
+  open(cpd, 0_WRONLY, 0644);
   
 
   return 0;
@@ -33,12 +43,18 @@ int client_handshake(int *to_server) {
   // creating client's private pipe
   int READ = 0;
   int WRITE = 1;
-  int client_pipe[2] = {READ, WRITE};
+  int client_pipe[2];
   pipe(client_pipe);
   close(client_pipe[WRITE]);
   
   // connecting to server
-  open(
+  open("server_fifo", 0_WRONLY, 0644);
+  
+  // sending private pipe descriptor
+  int cpd = client_pipe[WRITE];
+  write("server_fifo", cpd, sizeof(int));
+  
+  
 
-  return 0;
+  return client_pipe[READ];
 }
