@@ -15,18 +15,23 @@ int server_handshake(int *to_client) {
   mkfifo("server_fifo", 0644);
   
   // reading client message
-  open("server_fifo", O_RDONLY, 0644);
-  int cpd;
-  read("server_fifo", &cpd, sizeof(int));
+  int sf = open("server_fifo", O_RDONLY, 0644);
+  char message[BUFFER_SIZE];
+  read(sf, message, BUFFER_SIZE);
   
   // removing server's FIFO
   remove("server_fifo");
   
   // sending acknowledgement to client
-  open(cpd, 0_WRONLY, 0644);
-  
+  *to_client = open(message, O_WRONLY, 0644);
+  write(*to_client, message, BUFFER_SIZE);
 
-  return 0;
+  // receiving second client message
+  read(sf, message, BUFFER_SIZE);
+
+  printf("Server finished!\n");
+
+  return sf;
 }
 
 
@@ -41,20 +46,26 @@ int server_handshake(int *to_client) {
   =========================*/
 int client_handshake(int *to_server) {
   // creating client's private pipe
-  int READ = 0;
-  int WRITE = 1;
-  int client_pipe[2];
-  pipe(client_pipe);
-  close(client_pipe[WRITE]);
+  char message[BUFFER_SIZE] = "clientpipe";
+  mkfifo(message, 0644);
   
   // connecting to server
-  open("server_fifo", 0_WRONLY, 0644);
+  *to_server = open("server_fifo", O_WRONLY, 0644);
   
   // sending private pipe descriptor
-  int cpd = client_pipe[WRITE];
-  write("server_fifo", cpd, sizeof(int));
-  
-  
+  write(*to_server, message, BUFFER_SIZE);
 
-  return client_pipe[READ];
+  // receiving server acknowledgement
+  int cp = open(message, O_RDONLY, 0644);
+  read(cp, message, BUFFER_SIZE);
+
+  // removing client pipe
+  remove(message);
+
+  // sending acknowledgement message
+  write(*to_server, message, BUFFER_SIZE);
+
+  printf("Client finished!\n");
+
+  return cp;
 }
